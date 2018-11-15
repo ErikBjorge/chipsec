@@ -1,5 +1,5 @@
 #CHIPSEC: Platform Security Assessment Framework
-#Copyright (c) 2010-2016, Intel Corporation
+#Copyright (c) 2010-2018, Intel Corporation
 # 
 #This program is free software; you can redistribute it and/or
 #modify it under the terms of the GNU General Public License
@@ -34,7 +34,12 @@ class rtclock(BaseModule):
         self.res = ModuleResult.PASSED
 
     def is_supported(self):
-        return (self.cs.get_chipset_id() in chipsec.chipset.CHIPSET_FAMILY_CORE)
+        if self.cs.get_chipset_id() in chipsec.chipset.CHIPSET_FAMILY_CORE:
+            return True
+        elif self.cs.is_atom():
+            self.res = ModuleResult.NOTAPPLICABLE
+            return False
+        return False
 
     def check_rtclock(self):
         self.logger.start_test( "Protected RTC memory locations" )

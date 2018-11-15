@@ -1,5 +1,5 @@
 #CHIPSEC: Platform Security Assessment Framework
-#Copyright (c) 2010-2016, Intel Corporation
+#Copyright (c) 2010-2018, Intel Corporation
 # 
 #This program is free software; you can redistribute it and/or
 #modify it under the terms of the GNU General Public License
@@ -38,9 +38,11 @@ class ia32cfg(BaseModule):
 
     def is_supported(self):
         # @TODO: currently, this module cannot run on macOS
-        if self.cs.helper.is_macos(): return False
-
-        return (not self.cs.is_atom())
+        if self.cs.helper.is_macos():
+            return False
+        # TODO: Need to see what Atom processors this MSR is defined for and limit execution based
+        #       on control being defined.
+        return True
 
     def check_ia32feature_control(self):
         self.logger.start_test( "IA32 Feature Control Lock" )

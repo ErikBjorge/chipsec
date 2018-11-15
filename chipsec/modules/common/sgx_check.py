@@ -41,6 +41,12 @@ class sgx_check(BaseModule):
         self.helper = self.cs.helper
         self.res = ModuleResult.PASSED
 
+    def is_supported(self):
+        if self.cs.is_atom():
+            # TODO: Need to check PRMRR register locations for Atom.
+            return False
+        return True
+
     def check_sgx_config(self):
         self.logger.start_test("Check SGX feature support")
         self.logger.log("[*] Test if CPU has support for SGX")
