@@ -1,6 +1,6 @@
 #CHIPSEC: Platform Security Assessment Framework
 #Copyright (c) 2010-2015, Intel Corporation
-# 
+#
 #This program is free software; you can redistribute it and/or
 #modify it under the terms of the GNU General Public License
 #as published by the Free Software Foundation; Version 2.
@@ -48,24 +48,20 @@ class bios_smi(BaseModule):
         # @TODO: currently, this module cannot run on macOS
         if self.cs.helper.is_macos():
             return False
-        elif self.cs.is_atom():
-            #self.res = ModuleResult.NOTAPPLICABLE
-            # Need to check SMILock control definition before this can be enabled
+        elif not self.cs.is_control_defined( 'SmmBiosWriteProtection' ) or \
+            not self.cs.is_control_defined( 'TCOSMIEnable' ) or \
+            not self.cs.is_control_defined( 'GlobalSMIEnable' ) or \
+            not self.cs.is_control_defined( 'TCOSMILock' ) or \
+            not self.cs.is_control_defined( 'SMILock' ):
+            self.res = ModuleResult.NOTAPPLICABLE
             return False
+
         return True
 
     def check_SMI_locks(self):
 
         self.logger.start_test( "SMI Events Configuration" )
-        
-        if not self.cs.is_control_defined( 'SmmBiosWriteProtection' ) or \
-           not self.cs.is_control_defined( 'TCOSMIEnable' ) or \
-           not self.cs.is_control_defined( 'GlobalSMIEnable' ) or \
-           not self.cs.is_control_defined( 'TCOSMILock' ) or \
-           not self.cs.is_control_defined( 'SMILock' ):
-            self.logger.error( "Couldn't find definition of required configuration registers" )
-            return ModuleResult.ERROR
-        
+
         #
         # Checking SMM_BWP first in BIOS control to warn if SMM write-protection of the BIOS is not enabled
         #
