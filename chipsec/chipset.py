@@ -674,6 +674,12 @@ class Chipset:
     #
     ##################################################################################
 
+    def is_device_defined(self, device_name):
+        try:
+            return self.Cfg.CONFIG_PCI[device_name] is not None
+        except KeyError:
+            return False
+
     def get_device_BDF( self, device_name ):
         device = self.Cfg.CONFIG_PCI[ device_name ]
         if device is None or device == {}: raise DeviceNotFoundError, ('DeviceNotFound: %s' % device_name)
