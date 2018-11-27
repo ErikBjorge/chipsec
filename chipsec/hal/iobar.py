@@ -88,10 +88,10 @@ class IOBAR(hal_base.HALBase):
                 empty_base = self.cs.get_register_field_mask( bar_reg, preserve_field_position=True )
         else:
             # this method is not preferred
-            base = self.cs.pci.read_word( int(bar['bus'],16), int(bar['dev'],16), int(bar['fun'],16), int(bar['reg'],16) )
-            empty_base = 0xFFFF
+            empty_base = 0xFFFC
+            base = self.cs.pci.read_word( int(bar['bus'],16), int(bar['dev'],16), int(bar['fun'],16), int(bar['reg'],16) ) & empty_base
 
-        if 'fixed_address' in bar and base == empty_base:
+        if 'fixed_address' in bar and (base == empty_base or base == 0):
             base = int(bar['fixed_address'],16)
             if logger().VERBOSE: logger().log('[iobar] Using fixed address for {}: 0x{:016X}'.format(bar_name, base))
 

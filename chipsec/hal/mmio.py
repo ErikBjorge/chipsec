@@ -350,15 +350,17 @@ class MMIO(hal_base.HALBase):
             f = int(bar['fun'],16)
             r = int(bar['reg'],16)
             width = int(bar['width'],16)
-            reg_mask = (1 << (width * 8)) - 1
             if 8 == width:
+                reg_mask = 0xFFFFFFFFFFFFFFF0
                 base_lo = self.cs.pci.read_dword( b, d, f, r )
                 base_hi = self.cs.pci.read_dword( b, d, f, r + 4 )
                 base = (base_hi << 32) | base_lo
             else:
+                reg_mask = 0xFFFFFFF0
                 base = self.cs.pci.read_dword( b, d, f, r )
+            base = base & reg_mask
 
-        if 'fixed_address' in bar and base == reg_mask:
+        if 'fixed_address' in bar and (base == reg_mask or base == 0):
             base = int(bar['fixed_address'],16)
             if logger().VERBOSE: logger().log('[mmio] Using fixed address for {}: 0x{:016X}'.format(bar_name, base))
         if 'mask' in bar: base &= int(bar['mask'],16)
