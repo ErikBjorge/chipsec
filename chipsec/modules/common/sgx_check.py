@@ -42,9 +42,6 @@ class sgx_check(BaseModule):
         self.res = ModuleResult.PASSED
 
     def is_supported(self):
-        if self.cs.is_atom():
-            # TODO: Need to check PRMRR register locations for Atom.
-            return False
         return True
 
     def check_sgx_config(self):
@@ -112,7 +109,7 @@ class sgx_check(BaseModule):
             self.res - ModuleResult.FAILED
 
         # Check PRMRR configurations on each core.
-        self.logger.log("\n[*] Verifying PRMR Configuration on each core.")
+        self.logger.log("\n[*] Verifying PRMRR Configuration on each core.")
         first_iter = True
         prmrr_valid_config = 0
         prmrr_base = 0
@@ -132,10 +129,16 @@ class sgx_check(BaseModule):
             prmrr_mask_new = self.cs.read_register_field('PRMRR_MASK', 'PRMRR_mask_bits', False, tid)
             prmrr_mask_vld_new = self.cs.read_register_field('PRMRR_MASK', 'PRMRR_VLD', False, tid)
             prmrr_mask_lock_new = self.cs.read_register_field('PRMRR_MASK', 'PRMRR_LOCK', False, tid)
-            prmrr_uncore_base_new = self.cs.read_register_field('PRMRR_UNCORE_PHYBASE', 'PRMRR_base_address_fields', False, tid)
-            prmrr_uncore_mask_new = self.cs.read_register_field('PRMRR_UNCORE_MASK', 'PRMRR_mask_bits', False, tid)
-            prmrr_uncore_mask_vld_new = self.cs.read_register_field('PRMRR_UNCORE_MASK', 'PRMRR_VLD', False, tid)
-            prmrr_uncore_mask_lock_new = self.cs.read_register_field('PRMRR_UNCORE_MASK', 'PRMRR_LOCK', False, tid)
+            if self.cs.is_register_defined('PRMRR_UNCORE_PHYBASE') and self.cs.is_register_defined('PRMRR_UNCORE_MASK'):
+                prmrr_uncore_base_new = self.cs.read_register_field('PRMRR_UNCORE_PHYBASE', 'PRMRR_base_address_fields', False, tid)
+                prmrr_uncore_mask_new = self.cs.read_register_field('PRMRR_UNCORE_MASK', 'PRMRR_mask_bits', False, tid)
+                prmrr_uncore_mask_vld_new = self.cs.read_register_field('PRMRR_UNCORE_MASK', 'PRMRR_VLD', False, tid)
+                prmrr_uncore_mask_lock_new = self.cs.read_register_field('PRMRR_UNCORE_MASK', 'PRMRR_LOCK', False, tid)
+            else:
+                prmrr_uncore_base_new = 0
+                prmrr_uncore_mask_new = 0
+                prmrr_uncore_mask_vld_new = 0
+                prmrr_uncore_mask_lock_new = 0
             if logger().VERBOSE:
                 self.logger.log("[*]      CPU%d PRMRR_VALID_CONFIG: 0x%010X" % (tid, prmrr_valid_config_new))
                 self.logger.log("[*]      CPU%d PRMRR base address: 0x%012X" % (tid, prmrr_base_new))
@@ -217,22 +220,23 @@ class sgx_check(BaseModule):
             else:
                 self.logger.log_failed( "PRMRR MASK register is not locked" )
                 self.res = ModuleResult.FAILED
-            self.logger.log("[*]  PRMRR uncore base address: 0x%012X" % prmrr_uncore_base)
-            self.logger.log("[*]  PRMRR uncore mask address: 0x%012X" % prmrr_uncore_mask)
-            self.logger.log("[*]  Verifying PRMR uncore address are valid")
-            self.logger.log("[*]      PRMRR uncore mask valid: 0x%u" % prmrr_uncore_mask_vld)
-            if prmrr_uncore_mask_vld == 0x1:
-                self.logger.log_good( "Mcheck marked uncore PRMRR address as valid" )
-            else:
-                self.logger.log_failed( "Mcheck marked uncore PRMRR address as invalid" )
-                self.res = ModuleResult.FAILED
-            self.logger.log("[*]  Verifying if PRMR uncore mask register is locked")
-            self.logger.log("[*]      PRMRR uncore mask lock: 0x%u" % prmrr_uncore_mask_lock)
-            if prmrr_uncore_mask_lock == 0x1:
-                self.logger.log_good( "PMRR uncore MASK register is locked" )
-            else:
-                self.logger.log_failed( "PMRR uncore MASK register is not locked" )
-                self.res = ModuleResult.FAILED
+            if self.cs.is_register_defined('PRMRR_UNCORE_PHYBASE') and self.cs.is_register_defined('PRMRR_UNCORE_MASK'):
+                self.logger.log("[*]  PRMRR uncore base address: 0x%012X" % prmrr_uncore_base)
+                self.logger.log("[*]  PRMRR uncore mask address: 0x%012X" % prmrr_uncore_mask)
+                self.logger.log("[*]  Verifying PRMR uncore address are valid")
+                self.logger.log("[*]      PRMRR uncore mask valid: 0x%u" % prmrr_uncore_mask_vld)
+                if prmrr_uncore_mask_vld == 0x1:
+                    self.logger.log_good( "Mcheck marked uncore PRMRR address as valid" )
+                else:
+                    self.logger.log_failed( "Mcheck marked uncore PRMRR address as invalid" )
+                    self.res = ModuleResult.FAILED
+                self.logger.log("[*]  Verifying if PRMR uncore mask register is locked")
+                self.logger.log("[*]      PRMRR uncore mask lock: 0x%u" % prmrr_uncore_mask_lock)
+                if prmrr_uncore_mask_lock == 0x1:
+                    self.logger.log_good( "PMRR uncore MASK register is locked" )
+                else:
+                    self.logger.log_failed( "PMRR uncore MASK register is not locked" )
+                    self.res = ModuleResult.FAILED
 
         if sgx_cpu_support and bios_feature_control_enable and locked:
             sgx1_instr_support = False
@@ -277,11 +281,13 @@ class sgx_check(BaseModule):
             self.logger.log_failed("Intel SGX is not available to use")
             self.res = ModuleResult.FAILED
 
-        self.logger.log("\n[*] BIOS_SE_SVN : 0x%016X" % self.cs.read_register('BIOS_SE_SVN'))
-        self.logger.log("[*]     PFAT_SE_SVN : 0x%02X" % self.cs.read_register_field('BIOS_SE_SVN', 'PFAT_SE_SVN'))
-        self.logger.log("[*]     ANC_SE_SVN : 0x%02X" % self.cs.read_register_field('BIOS_SE_SVN', 'ANC_SE_SVN'))
-        self.logger.log("[*]     SCLEAN_SE_SVN : 0x%02X" % self.cs.read_register_field('BIOS_SE_SVN', 'SCLEAN_SE_SVN'))
-        self.logger.log("[*]     SINIT_SE_SVN : 0x%02X" % self.cs.read_register_field('BIOS_SE_SVN', 'SINIT_SE_SVN'))
+        self.logger.log("\n")
+        if self.cs.is_register_defined('BIOS_SE_SVN'):
+            self.logger.log("[*] BIOS_SE_SVN : 0x%016X" % self.cs.read_register('BIOS_SE_SVN'))
+            self.logger.log("[*]     PFAT_SE_SVN : 0x%02X" % self.cs.read_register_field('BIOS_SE_SVN', 'PFAT_SE_SVN'))
+            self.logger.log("[*]     ANC_SE_SVN : 0x%02X" % self.cs.read_register_field('BIOS_SE_SVN', 'ANC_SE_SVN'))
+            self.logger.log("[*]     SCLEAN_SE_SVN : 0x%02X" % self.cs.read_register_field('BIOS_SE_SVN', 'SCLEAN_SE_SVN'))
+            self.logger.log("[*]     SINIT_SE_SVN : 0x%02X" % self.cs.read_register_field('BIOS_SE_SVN', 'SINIT_SE_SVN'))
         self.logger.log("[*] BIOS_SE_SVN_STATUS : 0x%016X" % self.cs.read_register('BIOS_SE_SVN_STATUS'))
         self.logger.log("[*]     BIOS_SE_SVN ACM threshold lock : 0x%u" % self.cs.read_register_field('BIOS_SE_SVN_STATUS', 'LOCK'))
 
